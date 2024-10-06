@@ -1,6 +1,7 @@
 import { Socket } from "socket.io";
 import { getSocketIo } from "../../server";
 import todoModel from "./todoModel";
+import { ITodo, Status } from "./todoTypes";
 
 
 
@@ -15,9 +16,15 @@ class Todo{
       socket.on("addTodo",(data)=>{
         this.handleAddTodo(socket,data)
       })
+      socket.on("deleteTodo",(data)=>{
+        this.handleDeleteTodo(socket,data)
+      })
+      socket.on("updateTodoStatus",(data)=>{
+        this.handleUpdateTodo(socket,data)
+      })
     })
   }
-  private async handleAddTodo(socket:Socket,data:any){
+  private async handleAddTodo(socket:Socket,data:ITodo){
   try {
       const{task,deadline,status}=data
    const todo= await todoModel.create({
@@ -25,7 +32,7 @@ class Todo{
         deadline,
         status
       })
-     const todos=await todoModel.find()
+     const todos=await todoModel.find({status:Status.Pending})
      socket.emit("todos_updated",{
       status:"success",
       data:todos
@@ -37,6 +44,53 @@ class Todo{
     })
   }
   }
+  private async handleDeleteTodo(socket:Socket,data:{id:string}){
+  try {
+      const {id}=data
+     const deleteTodo= await todoModel.findByIdAndDelete(id)
+     if(!deleteTodo){
+      socket.emit("todo_response",{
+        status:"error",
+        message:"todo not found"
+      })
+      return;
+     }
+     const todos=await todoModel.find({status:Status.Pending})
+       socket.emit("todos_updated",{
+        status:"success",
+        data:todos
+       })
+  } catch (error) {
+    socket.emit("todo_response",{
+      status:"error",
+      error
+    })
+  }
+  }
+  private async handleUpdateTodo(socket:Socket,data:{id:string,status:Status}){
+    try {
+      const {id,status}=data
+     const todo= await todoModel.findByIdAndUpdate(id,{status})
+     if(!todo){
+      socket.emit("todo_response",{
+        status:"Error",
+        message:"todo not found"
+     })
+     return 
+    }
+    const todos=await todoModel.find({status:Status.Pending})
+    socket.emit("todos_updated",{
+     status:"success",
+     data:todos
+    })
+    } catch (error) {
+      socket.emit("todo_response",{
+        status:"error",
+        error
+      })
+      
+    }
+}
 }
 
 
