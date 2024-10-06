@@ -22,6 +22,9 @@ class Todo{
       socket.on("updateTodoStatus",(data)=>{
         this.handleUpdateTodo(socket,data)
       })
+      socket.on("fetchTodos",()=>{
+        this.getPendingTodos(socket)
+      })
     })
   }
   private async handleAddTodo(socket:Socket,data:ITodo){
@@ -91,6 +94,20 @@ class Todo{
       
     }
 }
+  private async getPendingTodos(socket:Socket){
+   try {
+     const todos=await todoModel.find({status:Status.Pending})
+     socket.emit("todos_updated",{
+       status:"success",
+       data:todos
+     })
+   } catch (error) {
+    socket.emit("todo_response",{
+      status:"error",
+      error
+    })
+   }
+  }
 }
 
 
